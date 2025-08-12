@@ -25,7 +25,7 @@ class ClientReference(ClientReferenceBase):
 
     class Config:
         orm_mode = True
-
+        
 
 # client_config
 class ClientConfigBase(BaseModel):
@@ -64,6 +64,7 @@ class BatchConfigClientSaveRequest(BaseModel):
 class ConfigClientVersionList(BaseModel):
     versions: List[str]
 
+
 # column_mapping
 class ColumnMappingBase(BaseModel):
     client_id: int
@@ -87,21 +88,10 @@ class ColumnMapping(ColumnMappingBase):
 class MappingVersionList(BaseModel):
     versions: List[str]
 
-class MappingRow(BaseModel):
-    source_column: str
-    target_column: str
-    logical_source_file: str
-
-    @validator('*')
-    def not_empty(cls, v):
-        if not v or not v.strip():
-            raise ValueError('field must not be empty')
-        return v.strip()
-
 class BatchMappingSaveRequest(BaseModel):
     client_id: int
     mapping_version: str
-    mappings: List[MappingRow]
+    mappings: List[ColumnMappingCreate]
 
     @validator('mapping_version')
     def valid_version_format(cls, v):

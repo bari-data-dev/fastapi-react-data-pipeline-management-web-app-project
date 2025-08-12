@@ -11,14 +11,18 @@ export default function BatchEditColumnMapping() {
       if (isAnyFilled && !isAllFilled) {
         return {
           valid: false,
-          message: `Row ${i + 1}: Jika ada satu field diisi, semua field harus diisi lengkap.`,
+          message: `Row ${
+            i + 1
+          }: Jika ada satu field diisi, semua field harus diisi lengkap.`,
         };
       }
 
       if ((source_column || target_column) && !logical_source_file) {
         return {
           valid: false,
-          message: `Row ${i + 1}: Logical Source File harus diisi jika ada data kolom lain.`,
+          message: `Row ${
+            i + 1
+          }: Logical Source File harus diisi jika ada data kolom lain.`,
         };
       }
     }
@@ -26,21 +30,30 @@ export default function BatchEditColumnMapping() {
   }
 
   // Transform payload sesuai API backend
-  function transformSavePayload({ selectedClient, selectedVersion, rows, versions, newVersion }) {
+  function transformSavePayload({
+    selectedClient,
+    selectedVersion,
+    rows,
+    newVersion,
+  }) {
     // Filter rows yang lengkap saja
     const filteredRows = rows.filter(
-      (r) => r.source_column && r.target_column && r.logical_source_file
+      (m) =>  m.source_column && m.target_column && m.logical_source_file
     );
 
+    // Lengkapi client_id & version di tiap row
+    const mappings = filteredRows.map((m) => ({
+      source_column: m.source_column,
+      target_column: m.target_column,
+      logical_source_file: m.logical_source_file,
+      client_id: m.client_id || Number(selectedClient),
+      mapping_version: m.mapping_version || newVersion,
+    }));
+
     return {
-      client_id: selectedClient,
-      base_mapping_version: selectedVersion,
+      client_id: Number(selectedClient),
       mapping_version: newVersion,
-      mappings: filteredRows.map(({ source_column, target_column, logical_source_file }) => ({
-        source_column,
-        target_column,
-        logical_source_file,
-      })),
+      mappings,
     };
   }
 

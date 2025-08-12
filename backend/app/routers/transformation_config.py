@@ -57,7 +57,7 @@ def delete_transformation_config(transform_id: int, db: Session = Depends(get_db
     return deleted
 
 @router.post("/batch_save")
-def save_batch_transformation_config(data: schemas.BatchTransformationConfigSaveRequest, db: Session = Depends(get_db)):
+def save_batch_transformation_config(data: BatchTransformationConfigSaveRequest, db: Session = Depends(get_db)):
     client_exists = db.query(ClientReference).filter(ClientReference.client_id == data.client_id).first()
     if not client_exists:
         raise HTTPException(status_code=400, detail="client_id not found")
@@ -84,3 +84,4 @@ def save_batch_transformation_config(data: schemas.BatchTransformationConfigSave
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
     return {"detail": "Batch saved successfully", "transform_version": data.transform_version}
+

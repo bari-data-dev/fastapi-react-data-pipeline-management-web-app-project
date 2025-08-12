@@ -64,7 +64,7 @@ def delete_client_config(config_id: int, db: Session = Depends(get_db)):
     return deleted
 
 @router.post("/batch_save")
-def save_batch_client_config(data: schemas.BatchConfigClientSaveRequest, db: Session = Depends(get_db)):
+def save_batch_client_config(data: BatchConfigClientSaveRequest, db: Session = Depends(get_db)):
     client_exists = db.query(ClientReference).filter(ClientReference.client_id == data.client_id).first()
     if not client_exists:
         raise HTTPException(status_code=400, detail="client_id not found")
@@ -96,3 +96,6 @@ def save_batch_client_config(data: schemas.BatchConfigClientSaveRequest, db: Ses
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
     return {"detail": "Batch saved successfully", "config_version": data.config_version}
+
+
+

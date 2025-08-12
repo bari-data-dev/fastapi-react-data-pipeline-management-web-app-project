@@ -46,6 +46,7 @@ def read_column_mappings(
         skip=skip,
         limit=limit
     )
+
 @router.put("/{mapping_id}", response_model=schemas.ColumnMapping)
 def update_column_mapping(mapping_id: int, column_mapping: schemas.ColumnMappingUpdate, db: Session = Depends(get_db)):
     updated = crud.update_column_mapping(db, mapping_id, column_mapping)
@@ -59,7 +60,6 @@ def delete_column_mapping(mapping_id: int, db: Session = Depends(get_db)):
     if deleted is None:
         raise HTTPException(status_code=404, detail="Column mapping not found")
     return deleted
-
 
 @router.post("/batch_save")
 def save_batch_mapping(data: BatchMappingSaveRequest, db: Session = Depends(get_db)):
@@ -85,10 +85,18 @@ def save_batch_mapping(data: BatchMappingSaveRequest, db: Session = Depends(get_
 
     # Simpan batch
     try:
-        crud.batch_save_column_mapping(db, data.client_id, data.mapping_version, [m.dict() for m in data.mappings])
+        crud.batch_save_column_mapping(
+            db, 
+            client_id=data.client_id, 
+            mapping_version=data.mapping_version, 
+            rows=[m.dict() for m in data.mappings])
+        
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
     return {"detail": "Batch saved successfully", "mapping_version": data.mapping_version}
+
+
+

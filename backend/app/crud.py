@@ -139,6 +139,7 @@ def batch_save_client_config(
 
 
 
+
 ##### COLUMN MAPPING #####
 
 def get_column_mapping(db: Session, mapping_id: int):
@@ -214,33 +215,36 @@ def get_max_mapping_version_number(db: Session, client_id: int) -> int:
                     max_ver = num
     return max_ver
 
-def batch_save_column_mapping(db: Session, client_id: int, new_version: str, mappings: list):
+def batch_save_column_mapping(db: Session,
+    client_id: int,
+    mapping_version: str,
+    rows: List[dict]
+    ):
     # Validate duplicate source_column in mappings list
-    source_columns = [m['source_column'] for m in mappings]
-    if len(source_columns) != len(set(source_columns)):
-        raise ValueError("Duplicate source_column values in batch")
+    if not rows:
+        raise ValueError("No rows provided for batch save")
 
-    try:
-        for mapping in mappings:
-            row = ColumnMapping(
+    db_rows = []
+    for row in rows:
+        db_rows.append(
+            models.ColumnMapping(
                 client_id=client_id,
-                source_column=mapping['source_column'],
-                target_column=mapping['target_column'],
-                mapping_version=new_version,
-                logical_source_file=mapping['logical_source_file']
+                source_column=row['source_column'],
+                target_column=row['target_column'],
+                mapping_version=mapping_version,
+                logical_source_file=row["logical_source_file"]
             )
-            db.add(row)
+        )
+        db.add_all(db_rows)
         db.commit()
-    except SQLAlchemyError as e:
-        db.rollback()
-        raise e
+
     
 
 ##### REQUIRED COLUMN #####
 
 def get_required_column(db: Session, required_id: int):
     return db.query(models.RequiredColumn).filter(models.RequiredColumn.required_id == required_id).first()
-# UPDATE: support filter dan pagination untuk required_columns
+
 def get_required_columns(
     db: Session,
     client_id: Optional[int] = None,
@@ -283,7 +287,6 @@ def delete_required_column(db: Session, required_id: int):
     db.commit()
     return db_required_column
 
-# NEW: Ambil distinct version untuk client tertentu
 def get_distinct_required_column_versions(db: Session, client_id: int) -> List[str]:
     versions = (
         db.query(models.RequiredColumn.required_column_version)
@@ -294,7 +297,6 @@ def get_distinct_required_column_versions(db: Session, client_id: int) -> List[s
     )
     return [v[0] for v in versions]
 
-# NEW: Ambil max versi dalam bentuk angka
 def get_max_required_column_version_number(db: Session, client_id: int) -> int:
     versions = get_distinct_required_column_versions(db, client_id)
     max_num = 0
@@ -306,7 +308,6 @@ def get_max_required_column_version_number(db: Session, client_id: int) -> int:
                 max_num = num
     return max_num
 
-# NEW: Batch insert required columns (immutable versioning)
 def batch_save_required_columns(
     db: Session,
     client_id: int,
@@ -329,6 +330,8 @@ def batch_save_required_columns(
 
     db.add_all(db_rows)
     db.commit()
+
+
 
 ##### TRANSFORMATION CONFIG #####
 
@@ -418,7 +421,6 @@ def batch_save_transformation_config(
         )
     db.add_all(db_rows)
     db.commit()
-
 
 
 ##### FILE AUDIT LOG #####

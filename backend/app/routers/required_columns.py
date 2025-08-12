@@ -14,9 +14,6 @@ router = APIRouter(
 )
 
 
-# ==============================
-# GET distinct versions
-# ==============================
 @router.get("/versions", response_model=schemas.MappingVersionList)
 def get_required_column_versions(client_id: int = Query(...), db: Session = Depends(get_db)):
     """
@@ -36,9 +33,6 @@ def read_required_column(required_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Required column not found")
     return db_required_column
 
-# ==============================
-# GET with filtering
-# ==============================
 @router.get("/", response_model=List[schemas.RequiredColumn])
 def read_required_columns(
     skip: int = 0,
@@ -77,9 +71,8 @@ def delete_required_column(required_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Required column not found")
     return deleted
 
-
 @router.post("/batch_save")
-def save_batch_required_columns(data: schemas.BatchRequiredColumnSaveRequest, db: Session = Depends(get_db)):
+def save_batch_required_columns(data: BatchRequiredColumnSaveRequest, db: Session = Depends(get_db)):
     client_exists = db.query(ClientReference).filter(ClientReference.client_id == data.client_id).first()
     if not client_exists:
         raise HTTPException(status_code=400, detail="client_id not found")

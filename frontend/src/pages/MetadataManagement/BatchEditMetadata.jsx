@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function BatchEditMetadata({
@@ -29,6 +29,9 @@ export default function BatchEditMetadata({
   const [error, setError] = useState(null);
   const [saveError, setSaveError] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  // refs untuk input (2D: rowIndex -> field -> ref)
+  const inputRefs = useRef({});
 
   // Load clients on mount
   useEffect(() => {
@@ -163,6 +166,37 @@ export default function BatchEditMetadata({
     return "v" + (Math.max(...versionNumbers) + 1);
   }
 
+  // Fungsi pindah fokus saat tekan Tab
+  function handleTabNext(rowIndex, fieldIndex) {
+    const fields = Object.keys(initialRowTemplate);
+    const totalRows = rows.length;
+
+    let nextRow = rowIndex;
+    let nextField = fieldIndex + 1;
+
+    if (nextField >= fields.length) {
+      nextField = 0;
+      nextRow += 1;
+    }
+
+    if (nextRow >= totalRows) {
+      addRow();
+      nextRow = totalRows; // baris baru adalah index setelah terakhir
+    }
+
+    const nextFieldName = fields[nextField];
+
+    setTimeout(() => {
+      if (
+        inputRefs.current[nextRow] &&
+        inputRefs.current[nextRow][nextFieldName] &&
+        inputRefs.current[nextRow][nextFieldName].focus
+      ) {
+        inputRefs.current[nextRow][nextFieldName].focus();
+      }
+    }, 50);
+  }
+
   async function handleSave() {
     setSaveError(null);
 
@@ -242,50 +276,81 @@ export default function BatchEditMetadata({
           </p>
         )}
 
-        <div className="mb-6 flex flex-wrap gap-6 items-end">
-          <div className="flex flex-col">
-            <label
-              htmlFor="client-select"
-              className="mb-1 font-medium text-gray-700"
-            >
-              Client
-            </label>
-            <select
-              id="client-select"
-              value={selectedClient}
-              onChange={(e) => setSelectedClient(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="">-- Select Client --</option>
-              {clients.map((c) => (
-                <option key={c.client_id} value={c.client_id}>
-                  {c.client_name} ({c.client_schema})
-                </option>
-              ))}
-            </select>
+        <div className="mb-6 flex justify-between items-end flex-wrap gap-6">
+          <div className="flex flex-wrap gap-6 items-end">
+            <div className="flex flex-col">
+              <label
+                htmlFor="client-select"
+                className="mb-1 font-medium text-gray-700"
+              >
+                Client
+              </label>
+              <select
+                id="client-select"
+                value={selectedClient}
+                onChange={(e) => setSelectedClient(e.target.value)}
+                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">-- Select Client --</option>
+                {clients.map((c) => (
+                  <option key={c.client_id} value={c.client_id}>
+                    {c.client_name} ({c.client_schema})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col">
+              <label
+                htmlFor="version-select"
+                className="mb-1 font-medium text-gray-700"
+              >
+                Version (Base)
+              </label>
+              <select
+                id="version-select"
+                value={selectedVersion}
+                onChange={(e) => setSelectedVersion(e.target.value)}
+                disabled={!selectedClient || loadingVersions}
+                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+              >
+                <option value="">-- Select Version --</option>
+                {versions.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="flex flex-col">
-            <label
-              htmlFor="version-select"
-              className="mb-1 font-medium text-gray-700"
+          <div className="flex gap-4 flex-wrap">
+            <button
+              onClick={addRow}
+              disabled={!selectedVersion}
+              className="px-5 py-2 bg-green-600 text-white font-semibold rounded shadow hover:bg-green-700 disabled:opacity-50 transition"
+              type="button"
             >
-              Version (Base)
-            </label>
-            <select
-              id="version-select"
-              value={selectedVersion}
-              onChange={(e) => setSelectedVersion(e.target.value)}
-              disabled={!selectedClient || loadingVersions}
-              className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+              Add Row
+            </button>
+
+            <button
+              onClick={() => navigate(navigateBackUrl)}
+              disabled={saving}
+              className="px-5 py-2 border rounded hover:bg-gray-100 transition"
+              type="button"
             >
-              <option value="">-- Select Version --</option>
-              {versions.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
+              Cancel
+            </button>
+
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 font-semibold transition"
+              type="button"
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
           </div>
         </div>
 
@@ -319,15 +384,25 @@ export default function BatchEditMetadata({
                         key={row.id}
                         className="hover:bg-gray-50 transition-colors cursor-default"
                       >
-                        {Object.entries(initialRowTemplate).map(([field]) => (
-                          <td key={field} className="border px-3 py-2">
-                            <EditableDropdown
-                              value={row[field] || ""}
-                              options={getDropdownOptions(field)}
-                              onChange={(val) => handleRowChange(i, field, val)}
-                            />
-                          </td>
-                        ))}
+                        {Object.entries(initialRowTemplate).map(
+                          ([field], fieldIndex) => (
+                            <td key={field} className="border px-3 py-2">
+                              <EditableDropdown
+                                value={row[field] || ""}
+                                options={getDropdownOptions(field)}
+                                onChange={(val) =>
+                                  handleRowChange(i, field, val)
+                                }
+                                inputRef={(el) => {
+                                  if (!inputRefs.current[i])
+                                    inputRefs.current[i] = {};
+                                  inputRefs.current[i][field] = el;
+                                }}
+                                onTabNext={() => handleTabNext(i, fieldIndex)}
+                              />
+                            </td>
+                          )
+                        )}
                         <td className="border px-3 py-2 text-center">
                           <button
                             onClick={() => removeRow(i)}
@@ -394,8 +469,8 @@ export default function BatchEditMetadata({
   );
 }
 
-// EditableDropdown: dropdown editable dengan input manual
-function EditableDropdown({ value, options, onChange }) {
+// EditableDropdown: dropdown editable dengan input manual dan tab handling
+function EditableDropdown({ value, options, onChange, inputRef, onTabNext }) {
   const [inputValue, setInputValue] = useState(value || "");
   const [isDropdownOpen, setDropdownOpen] = useState(false);
 
@@ -406,6 +481,13 @@ function EditableDropdown({ value, options, onChange }) {
   function handleInputChange(e) {
     setInputValue(e.target.value);
     onChange(e.target.value);
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      if (onTabNext) onTabNext();
+    }
   }
 
   function toggleDropdown() {
@@ -421,10 +503,12 @@ function EditableDropdown({ value, options, onChange }) {
   return (
     <div className="relative w-full">
       <input
+        ref={inputRef}
         type="text"
         className="w-full border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         value={inputValue}
         onChange={handleInputChange}
+        onKeyDown={handleKeyDown}
         onFocus={() => setDropdownOpen(true)}
         onBlur={() => setTimeout(() => setDropdownOpen(false), 150)}
         autoComplete="off"
